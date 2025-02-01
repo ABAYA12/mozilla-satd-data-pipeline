@@ -1,55 +1,32 @@
-import json
+# clean.py
+
+import pandas as pd
 import re
-from datetime import datetime
+from config import FILE_PATHS
 
-def load_commits(file_path):
-    with open(file_path, "r") as f:
-        return json.load(f)
+def clean_data():
+    # Load uncleaned data
+    df = pd.read_csv(FILE_PATHS["uncleaned_data"])
 
-def clean_commit_message(message):
-    # Strip extra spaces
-    message = message.strip()
-    # Remove all non-alphanumeric characters (excluding spaces and basic punctuation)
-    message = re.sub(r'[^\w\s]', '', message)
-    # Remove numbers
-    message = re.sub(r'\d+', '', message)
-    # Remove underscores
-    message = message.replace('_', ' ')
-    # Replace multiple spaces with a single space
-    message = re.sub(r'\s+', ' ', message)
-    return message
+    # Clean text fields
+    def clean_text(text):
+        if isinstance(text, str):
+            text = re.sub(r"[_,;'/\\\|{}[\]!@#%^&*()=+]", " ", text)
+            text = " ".join(text.split())
+            text = text.lower()
+        return text
 
-def format_date(date_str):
-    try:
-        # Parse the date from ISO 8601 format
-        date_obj = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
-        # Format the date in a more readable format
-        return date_obj.strftime("%B %d, %Y %I:%M %p")  # Example: 'December 29, 2024 07:02 AM'
-    except ValueError:
-        # Return the original date if parsing fails
-        return date_str
+    # Apply cleaning to text fields
+    df["Product Name"] = df["Product Name"].apply(clean_text)
+    df["Category"] = df["Category"].apply(clean_text)
+    df["Customer Location"] = df["Customer Location"].apply(clean_text)
 
-def clean_data(commits):
-    cleaned_commits = []
-    sha_counter = 1  # Start the auto-increment counter for SHA
+    # Format Purchase Date
+    df["Purchase Date"] = pd.to_datetime(df["Purchase Date"]).dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    for commit in commits:
-        cleaned_commit = {
-            "sha": sha_counter,  # Assign the auto-incremented SHA value
-            "author": commit.get("commit", {}).get("author", {}).get("name", "Unknown"),
-            "date": format_date(commit.get("commit", {}).get("author", {}).get("date", "")),
-            "message": clean_commit_message(commit.get("commit", {}).get("message", ""))
-        }
-        cleaned_commits.append(cleaned_commit)
-        sha_counter += 1  # Increment the SHA counter for the next commit
-
-    return cleaned_commits
+    # Save cleaned data to CSV
+    df.to_csv(FILE_PATHS["cleaned_data"], index=False)
+    print("Data cleaned and saved to:", FILE_PATHS["cleaned_data"])
 
 if __name__ == "__main__":
-    commits = load_commits("commits.json")
-    cleaned_commits = clean_data(commits)
-    
-    with open("cleaned_commits.json", "w") as f:
-        json.dump(cleaned_commits, f, indent=4)
-    
-    print("Cleaned data saved to cleaned_commits.json")
+    clean_data()

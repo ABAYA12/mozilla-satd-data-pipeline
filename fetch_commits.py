@@ -9,7 +9,7 @@ def fetch_commits(since, until):
         params = {
             "since": since,
             "until": until,
-            "per_page": 1000,  # Max per page
+            "per_page": 100,  # Max per page
             "page": page  # Paginate through pages
         }
         response = requests.get(GITHUB_API_URL, headers=HEADERS, params=params)
